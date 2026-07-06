@@ -1,0 +1,707 @@
+{
+  "name": "02 Approvals (Telegram)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "callback_query",
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "telegram-trigger",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted Telegram Bot"
+        }
+      },
+      "webhookId": "rooted-approvals"
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Demo-grade conversational state for Telegram approvals. Reads ONLY callback\n// data and reply-chain prompts (which embed <qid> and the step) — never message\n// intent/sentiment. The reply-to chain carries the two-step edit state.\nconst u = $input.first().json;\nconst cq = u.callback_query;\nconst msg = u.message;\n\nfunction out(o) { return [{ json: o }]; }\n\nif (cq && cq.data) {\n  const [op, qid] = cq.data.split(':');\n  if (op === 'app')  return out({ kind: 'approve',      qid, cb_id: cq.id, chat: cq.message.chat.id, msg_id: cq.message.message_id });\n  if (op === 'rej')  return out({ kind: 'reject_prompt', qid, cb_id: cq.id, chat: cq.message.chat.id });\n  if (op === 'edit') return out({ kind: 'edit_prompt',   qid, cb_id: cq.id, chat: cq.message.chat.id });\n  return out({ kind: 'ignore' });\n}\n\nif (msg && msg.reply_to_message && typeof msg.reply_to_message.text === 'string') {\n  const prompt = msg.reply_to_message.text;\n  const chat = msg.chat.id;\n  let m;\n  if ((m = prompt.match(/^Reason for rejecting (\\S+)\\?/)))\n    return out({ kind: 'reject_submit', qid: m[1], reason: msg.text, chat });\n  if ((m = prompt.match(/^Replacement text for (\\S+):/)))\n    return out({ kind: 'edit_text_prompt', qid: m[1], edited_text: msg.text, chat });\n  if ((m = prompt.match(/^Reason for editing (\\S+)\\?/))) {\n    // the edited text lives one hop up the reply chain (the message we quoted)\n    const edited = (msg.reply_to_message.reply_to_message && msg.reply_to_message.reply_to_message.text) || '';\n    return out({ kind: 'edit_submit', qid: m[1], reason: msg.text, edited_text: edited, chat });\n  }\n}\nreturn out({ kind: 'ignore' });"
+      },
+      "id": "dispatch",
+      "name": "Dispatch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "approve",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "approve"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "reject_prompt",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "reject_prompt"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "edit_prompt",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "edit_prompt"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "reject_submit",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "reject_submit"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "edit_text_prompt",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "edit_text_prompt"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "edit_submit",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "edit_submit"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "route-callback",
+      "name": "Route Callback",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        440,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://rooted-api:8000/v1/approve",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"queue_id\": $json.qid, \"decision\": \"approve\" } }}"
+      },
+      "id": "approve",
+      "name": "Approve",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        700,
+        40
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted API Key"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// PLACEHOLDER for the real Instagram \"send DM\" node. Swap this out for the\n// channel node later — README marks this seam. For now it just logs.\nconst d = $input.first().json;\nconsole.log('PLACEHOLDER SEND (instagram):', JSON.stringify({\n  handle: d.handle, reply_to_send: d.reply_to_send, reply_kind: d.reply_kind,\n}));\nreturn [{ json: d }];"
+      },
+      "id": "send-approved",
+      "name": "Send Approved",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://rooted-api:8000/v1/sent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"queue_id\": $('Dispatch').item.json.qid, \"channel\": \"instagram\", \"ok\": true, \"detail\": \"approved\" } }}"
+      },
+      "id": "confirm-approved-sent",
+      "name": "Confirm Approved Sent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1140,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $('Dispatch').item.json.chat }}",
+        "text": "=✅ Approved & sent ({{ $('Dispatch').item.json.qid }}).",
+        "additionalFields": {}
+      },
+      "id": "approved-confirm",
+      "name": "Approved Confirm",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1360,
+        0
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $('Dispatch').item.json.chat }}",
+        "text": "=⚠️ Can't approve {{ $('Dispatch').item.json.qid }}: {{ $json.error || 'no draft — use Edit to write your own.' }}",
+        "additionalFields": {}
+      },
+      "id": "approve-error",
+      "name": "Approve Error",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        920,
+        160
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $json.chat }}",
+        "text": "=Reason for rejecting {{ $json.qid }}?",
+        "additionalFields": {},
+        "replyMarkup": "forceReply",
+        "forceReply": {
+          "forceReply": true
+        }
+      },
+      "id": "reject-prompt",
+      "name": "Reject Prompt",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        700,
+        240
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://rooted-api:8000/v1/approve",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"queue_id\": $json.qid, \"decision\": \"reject\", \"reason\": $json.reason } }}"
+      },
+      "id": "reject-submit",
+      "name": "Reject Submit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        700,
+        360
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $('Dispatch').item.json.chat }}",
+        "text": "=❌ Rejected {{ $('Dispatch').item.json.qid }}.",
+        "additionalFields": {}
+      },
+      "id": "reject-confirm",
+      "name": "Reject Confirm",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        920,
+        360
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $json.chat }}",
+        "text": "=Replacement text for {{ $json.qid }}:",
+        "additionalFields": {},
+        "replyMarkup": "forceReply",
+        "forceReply": {
+          "forceReply": true
+        }
+      },
+      "id": "edit-prompt",
+      "name": "Edit Prompt",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        700,
+        480
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $json.chat }}",
+        "text": "=Reason for editing {{ $json.qid }}? (text saved)",
+        "additionalFields": {},
+        "replyMarkup": "forceReply",
+        "forceReply": {
+          "forceReply": true
+        }
+      },
+      "id": "edit-reason-prompt",
+      "name": "Edit Reason Prompt",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        700,
+        600
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://rooted-api:8000/v1/approve",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"queue_id\": $json.qid, \"decision\": \"edit\", \"edited_text\": $json.edited_text, \"reason\": $json.reason } }}"
+      },
+      "id": "edit-submit",
+      "name": "Edit Submit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        700,
+        720
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// PLACEHOLDER for the real Instagram \"send DM\" node. Swap this out for the\n// channel node later — README marks this seam. For now it just logs.\nconst d = $input.first().json;\nconsole.log('PLACEHOLDER SEND (instagram):', JSON.stringify({\n  handle: d.handle, reply_to_send: d.reply_to_send, reply_kind: d.reply_kind,\n}));\nreturn [{ json: d }];"
+      },
+      "id": "edit-send",
+      "name": "Edit Send",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://rooted-api:8000/v1/sent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"queue_id\": $('Dispatch').item.json.qid, \"channel\": \"instagram\", \"ok\": true, \"detail\": \"approved_with_edits\" } }}"
+      },
+      "id": "confirm-edit-sent",
+      "name": "Confirm Edit Sent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1140,
+        720
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $('Dispatch').item.json.chat }}",
+        "text": "=✏️ Edited & sent ({{ $('Dispatch').item.json.qid }}).",
+        "additionalFields": {}
+      },
+      "id": "edit-confirm",
+      "name": "Edit Confirm",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1360,
+        720
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "ignore",
+      "name": "Ignore",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        700,
+        860
+      ]
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Dispatch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dispatch": {
+      "main": [
+        [
+          {
+            "node": "Route Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Callback": {
+      "main": [
+        [
+          {
+            "node": "Approve",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject Submit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Reason Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Submit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ignore",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approve": {
+      "main": [
+        [
+          {
+            "node": "Send Approved",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Approve Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Approved": {
+      "main": [
+        [
+          {
+            "node": "Confirm Approved Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirm Approved Sent": {
+      "main": [
+        [
+          {
+            "node": "Approved Confirm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reject Submit": {
+      "main": [
+        [
+          {
+            "node": "Reject Confirm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Submit": {
+      "main": [
+        [
+          {
+            "node": "Edit Send",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Send": {
+      "main": [
+        [
+          {
+            "node": "Confirm Edit Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirm Edit Sent": {
+      "main": [
+        [
+          {
+            "node": "Edit Confirm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

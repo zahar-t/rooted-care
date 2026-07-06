@@ -1,0 +1,565 @@
+{
+  "name": "01 Inbound DM",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "rooted-dm",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "rooted-dm"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ok\": true } }}",
+        "options": {}
+      },
+      "id": "respond-to-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        220,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Normalise an inbound DM to the /v1/route contract. Content is NOT inspected —\n// this only shapes fields and derives a stable message_id for idempotency.\nconst crypto = require('crypto');\nconst src = $input.first().json;\nconst body = src.body || src;                    // webhook payload lives under .body\nconst handle = String(body.handle || '').replace(/^@/, '');\nconst text = String(body.text || '');\nlet messageId = String(body.message_id || '');\nif (!messageId) {\n  messageId = crypto.createHash('sha256').update(handle + text).digest('hex').slice(0, 16);\n}\nreturn [{ json: { message_id: messageId, handle, text, channel: 'instagram' } }];"
+      },
+      "id": "normalize",
+      "name": "Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://rooted-api:8000/v1/route",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 180000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"message_id\": $json.message_id, \"handle\": $json.handle, \"text\": $json.text, \"channel\": $json.channel } }}"
+      },
+      "id": "route",
+      "name": "Route",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        420
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted API Key"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $env.OPERATOR_CHAT_ID }}",
+        "text": "=⚠️ route failed — raw DM attached, nothing was sent.\\n{{ JSON.stringify($('Normalize').item.json) }}",
+        "additionalFields": {}
+      },
+      "id": "route-failed-alert",
+      "name": "Route Failed Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        660,
+        620
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "auto_send",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "auto_send"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "ack_and_queue",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ack_and_queue"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "queue",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "queue"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "duplicate",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "duplicate"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "switch",
+      "name": "Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        660,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// PLACEHOLDER for the real Instagram \"send DM\" node. Swap this out for the\n// channel node later — README marks this seam. For now it just logs.\nconst d = $input.first().json;\nconsole.log('PLACEHOLDER SEND (instagram):', JSON.stringify({\n  handle: d.handle, reply_to_send: d.reply_to_send, reply_kind: d.reply_kind,\n}));\nreturn [{ json: d }];"
+      },
+      "id": "send-care",
+      "name": "Send Care",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://rooted-api:8000/v1/sent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"message_id\": $('Route').item.json.message_id, \"channel\": \"instagram\", \"ok\": true, \"detail\": \"care_reply\" } }}"
+      },
+      "id": "confirm-sent-care",
+      "name": "Confirm Sent Care",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        120
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted API Key"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "end-ok",
+      "name": "End OK",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// PLACEHOLDER for the real Instagram \"send DM\" node. Swap this out for the\n// channel node later — README marks this seam. For now it just logs.\nconst d = $input.first().json;\nconsole.log('PLACEHOLDER SEND (instagram):', JSON.stringify({\n  handle: d.handle, reply_to_send: d.reply_to_send, reply_kind: d.reply_kind,\n}));\nreturn [{ json: d }];"
+      },
+      "id": "send-ack",
+      "name": "Send Ack",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://rooted-api:8000/v1/sent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"message_id\": $('Route').item.json.message_id, \"channel\": \"instagram\", \"ok\": true, \"detail\": \"holding_ack\" } }}"
+      },
+      "id": "confirm-sent-ack",
+      "name": "Confirm Sent Ack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Route').item.json.queued.has_draft }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "has-draft",
+      "name": "Has Draft?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        900,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $env.SOFIA_CHAT_ID }}",
+        "text": "={{ ($('Route').item.json.queued.urgency === 'high' ? '‼️ URGENT\\n' : '') + '🪴 ' + $('Route').item.json.queued.type + ' — @' + $('Route').item.json.handle + '\\n' + $('Route').item.json.queued.summary + '\\n\\nNotes: ' + $('Route').item.json.queued.notes + ($('Route').item.json.queued.draft_reply ? '\\n\\nDraft:\\n' + $('Route').item.json.queued.draft_reply.slice(0,300) : '') }}",
+        "additionalFields": {},
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✅ Approve",
+                    "additionalFields": {
+                      "callback_data": "={{ 'app:' + $('Route').item.json.queued.id }}"
+                    }
+                  },
+                  {
+                    "text": "✏️ Edit",
+                    "additionalFields": {
+                      "callback_data": "={{ 'edit:' + $('Route').item.json.queued.id }}"
+                    }
+                  },
+                  {
+                    "text": "❌ Reject",
+                    "additionalFields": {
+                      "callback_data": "={{ 'rej:' + $('Route').item.json.queued.id }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "id": "notify-approve",
+      "name": "Notify Approve",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1120,
+        420
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $env.SOFIA_CHAT_ID }}",
+        "text": "={{ ($('Route').item.json.queued.urgency === 'high' ? '‼️ URGENT\\n' : '') + '🪴 ' + $('Route').item.json.queued.type + ' — @' + $('Route').item.json.handle + '\\n' + $('Route').item.json.queued.summary + '\\n\\nNotes: ' + $('Route').item.json.queued.notes + '\\n\\n(No draft — yours to write, Sofia.)' }}",
+        "additionalFields": {}
+      },
+      "id": "notify-plain",
+      "name": "Notify Plain",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1120,
+        600
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "duplicate-end",
+      "name": "Duplicate End",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        900,
+        680
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize": {
+      "main": [
+        [
+          {
+            "node": "Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route Failed Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Send Care",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Ack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Has Draft?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Duplicate End",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Care": {
+      "main": [
+        [
+          {
+            "node": "Confirm Sent Care",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirm Sent Care": {
+      "main": [
+        [
+          {
+            "node": "End OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Ack": {
+      "main": [
+        [
+          {
+            "node": "Confirm Sent Ack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirm Sent Ack": {
+      "main": [
+        [
+          {
+            "node": "Has Draft?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Draft?": {
+      "main": [
+        [
+          {
+            "node": "Notify Approve",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Plain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

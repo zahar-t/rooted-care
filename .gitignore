@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+
+# Local eval cache (regenerated on run)
+slice/eval/.triage_cache.json
+
+# Secrets / env
+.env
+.env.*
+
+# OS
+.DS_Store

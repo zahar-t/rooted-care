@@ -1,0 +1,136 @@
+{
+  "name": "04 Daily Digest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 9,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "schedule-09:00",
+      "name": "Schedule 09:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://rooted-api:8000/v1/queue",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "pending"
+            }
+          ]
+        }
+      },
+      "id": "get-pending-queue",
+      "name": "Get Pending Queue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Format the pending queue into a digest. Reads counts + ids/types/handles only.\nconst r = $input.first().json;\nconst items = r.items || [];\nconst counts = r.counts || { pending: 0, high: 0 };\nlet text;\nif (items.length === 0) {\n  text = 'Queue is empty. Go water something. \\u{1F33F}';\n} else {\n  const urgent = counts.high ? ` (${counts.high} ‼️)` : '';\n  const lines = items.slice(0, 10).map(i =>\n    `${i.urgency === 'high' ? '‼️ ' : ''}${i.id} ${i.type} @${i.handle}`);\n  text = `\\u{1FAB4} ${counts.pending} waiting${urgent}:\\n` + lines.join('\\n');\n}\nreturn [{ json: { text } }];"
+      },
+      "id": "format-digest",
+      "name": "Format Digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $env.SOFIA_CHAT_ID }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {}
+      },
+      "id": "digest-to-sofia",
+      "name": "Digest to Sofia",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        660,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule 09:00": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending Queue": {
+      "main": [
+        [
+          {
+            "node": "Format Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Digest": {
+      "main": [
+        [
+          {
+            "node": "Digest to Sofia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

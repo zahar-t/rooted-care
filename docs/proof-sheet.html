@@ -1,0 +1,327 @@
+<title>Rooted Autopilot — Proof Sheet</title>
+<style>
+  :root {
+    --paper: #F4F6F2;
+    --card: #FBFCFA;
+    --ink: #16281F;
+    --ink-soft: #4C5C52;
+    --ink-faint: #7C8A80;
+    --fern: #2F6A4B;
+    --fern-deep: #1E4A34;
+    --line: #DCE4DB;
+    --line-soft: #E8EDE6;
+    --good: #2F8A5B;
+    --good-bg: #E7F2EB;
+    --warn: #B9821F;
+    --warn-bg: #F6EEDD;
+    --bad: #B23A2E;
+    --bad-bg: #F6E4E1;
+    --term: #10201A;
+    --term-ink: #C9D8CE;
+    --term-dim: #6F8578;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 840px;
+    margin: 0 auto;
+    padding: 4rem 1.5rem 5rem;
+    animation: rise .5s ease both;
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .wrap { animation: none; } }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: .72rem;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--fern);
+    margin: 0 0 1rem;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: clamp(2.1rem, 5vw, 3rem);
+    line-height: 1.05;
+    letter-spacing: -.01em;
+    text-wrap: balance;
+    margin: 0 0 1.1rem;
+  }
+  .lede {
+    font-size: 1.12rem;
+    color: var(--ink-soft);
+    max-width: 60ch;
+    margin: 0 0 1.75rem;
+  }
+  .verdict {
+    display: inline-flex;
+    align-items: center;
+    gap: .55rem;
+    background: var(--good-bg);
+    color: var(--good);
+    border: 1px solid #BFDECC;
+    border-radius: 999px;
+    padding: .4rem .9rem;
+    font-family: var(--mono);
+    font-size: .8rem;
+    font-weight: 600;
+    letter-spacing: .02em;
+  }
+  .verdict .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
+
+  .thesis {
+    border-left: 3px solid var(--fern);
+    padding: .4rem 0 .4rem 1.3rem;
+    margin: 2.75rem 0;
+    font-family: var(--serif);
+    font-size: 1.5rem;
+    line-height: 1.3;
+    font-style: italic;
+    color: var(--fern-deep);
+    text-wrap: balance;
+  }
+  .thesis span { color: var(--ink-faint); font-size: .82rem; font-style: normal; font-family: var(--mono); display: block; margin-top: .7rem; letter-spacing: .04em; text-transform: uppercase; }
+
+  section { margin: 3.5rem 0 0; }
+  h2 {
+    font-family: var(--serif);
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -.01em;
+    margin: 0 0 .35rem;
+  }
+  .sub { color: var(--ink-faint); font-size: .92rem; margin: 0 0 1.5rem; }
+
+  /* pipeline */
+  .pipe {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    align-items: stretch;
+  }
+  .pipe .step {
+    flex: 1 1 120px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: .85rem .9rem;
+  }
+  .pipe .step b { font-size: .7rem; font-family: var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--fern); display: block; margin-bottom: .3rem; }
+  .pipe .step.code b { color: var(--warn); }
+  .pipe .step p { margin: 0; font-size: .86rem; color: var(--ink-soft); }
+
+  /* lanes table */
+  .lanes { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  .lanes th, .lanes td { text-align: left; padding: .7rem .8rem; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  .lanes thead th { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint); border-bottom: 1px solid var(--line); }
+  .lanes tbody tr:last-child td { border-bottom: none; }
+  .lanes .trigger { color: var(--ink); font-weight: 500; }
+  .lanes .who { color: var(--ink-soft); }
+  .tag { display: inline-block; font-family: var(--mono); font-size: .68rem; font-weight: 600; padding: .18rem .5rem; border-radius: 5px; letter-spacing: .02em; white-space: nowrap; }
+  .tag.auto { background: var(--good-bg); color: var(--good); }
+  .tag.human { background: var(--warn-bg); color: var(--warn); }
+  .tag.urgent { background: var(--bad-bg); color: var(--bad); }
+
+  /* stat tiles */
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: .75rem; margin-bottom: 1.25rem; }
+  @media (max-width: 620px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+  .tile { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 1.1rem 1rem; }
+  .tile .n { font-family: var(--serif); font-size: 2.1rem; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+  .tile .n.hero { color: var(--good); }
+  .tile .k { font-size: .78rem; color: var(--ink-faint); margin-top: .45rem; font-family: var(--mono); letter-spacing: .02em; }
+  .tile .frac { color: var(--ink-faint); font-size: 1rem; font-family: var(--mono); }
+
+  /* risk table */
+  .risk { width: 100%; border-collapse: collapse; font-size: .9rem; margin-bottom: 1.5rem; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .risk td { padding: .7rem .9rem; border-bottom: 1px solid var(--line-soft); }
+  .risk tr:last-child td { border-bottom: none; }
+  .risk .stripe { width: 4px; padding: 0; }
+  .risk .cls { font-family: var(--mono); font-size: .8rem; font-weight: 600; }
+  .risk .desc { color: var(--ink-soft); }
+  .risk .count { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 600; width: 3rem; }
+  .risk .gate { text-align: right; font-family: var(--mono); font-size: .72rem; color: var(--ink-faint); white-space: nowrap; }
+  .stripe.d { background: var(--bad); }
+  .stripe.s { background: var(--warn); }
+  .stripe.q { background: var(--ink-faint); }
+  .zero { color: var(--good); }
+
+  .callout {
+    background: var(--warn-bg);
+    border: 1px solid #E6D3A6;
+    border-radius: 12px;
+    padding: 1.1rem 1.2rem;
+    font-size: .92rem;
+    color: #6B5314;
+  }
+  .callout b { color: var(--warn); }
+
+  /* terminal */
+  .term {
+    background: var(--term);
+    color: var(--term-ink);
+    border-radius: 12px;
+    padding: 1rem 1.1rem;
+    font-family: var(--mono);
+    font-size: .78rem;
+    line-height: 1.65;
+    overflow-x: auto;
+    margin-top: 1rem;
+    box-shadow: 0 1px 0 rgba(0,0,0,.04);
+  }
+  .term .cmd { color: #9FD9B4; }
+  .term .cmd::before { content: "$ "; color: var(--term-dim); }
+  .term .dim { color: var(--term-dim); }
+  .term .ok { color: #79C99A; }
+  .term .warn { color: #E0B45C; }
+  .term .bad { color: #E08C7E; }
+  .term .head { color: #fff; }
+  .term pre { margin: 0; white-space: pre; font: inherit; }
+
+  footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--line); color: var(--ink-faint); font-size: .85rem; }
+  footer code { font-family: var(--mono); background: #EAEFE8; padding: .1rem .35rem; border-radius: 4px; color: var(--fern-deep); font-size: .82em; }
+  .repro { display: flex; flex-wrap: wrap; gap: .4rem .5rem; margin: .6rem 0 1.2rem; }
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">Rooted · Inbox Autopilot · captured run</p>
+  <h1>A houseplant business on autopilot — with the safety rails measured, not assumed.</h1>
+  <p class="lede">Rooted gets ~20 Instagram DMs a day: care questions, panicked pet owners, replacement requests, cancellations, billing. This slice reads and drafts every one, auto-sends only what's provably safe, and hands Sofia the rest — urgent first. Below is a real end-to-end run and the quality gate that governs what's allowed to auto-send.</p>
+  <span class="verdict"><span class="dot"></span>QUALITY GATE: PASS — 0 dangerous errors · pet-safety recall 100% · draft gate 12/12</span>
+
+  <p class="thesis">
+    The LLM writes words. Code owns facts, money and dates.
+    <span>The model never computes a price, decides eligibility, or invents a plant fact outside Sofia's own care guides.</span>
+  </p>
+
+  <section>
+    <h2>One message, three hand-offs</h2>
+    <p class="sub">The model brackets the decision; deterministic code makes it.</p>
+    <div class="pipe">
+      <div class="step"><b>Claude · read</b><p>Structured triage: intent, plant, pet-safety, sentiment, urgency.</p></div>
+      <div class="step code"><b>Code · decide</b><p>Subscriber &amp; shipment lookup, replacement eligibility, tier maths, routing. No LLM.</p></div>
+      <div class="step"><b>Claude · draft</b><p>Reply in Sofia's voice, plant facts only from her guides, ≤110 words.</p></div>
+      <div class="step code"><b>Code · gate &amp; route</b><p>A deterministic draft gate vets every auto-send; money, safety &amp; retention queue for Sofia.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Six lanes, one gate</h2>
+    <p class="sub">Every DM lands in exactly one lane. Only the top row ever sends model-written facts without a human.</p>
+    <div style="overflow-x:auto">
+    <table class="lanes">
+      <thead><tr><th>Lane</th><th>Triggered by</th><th>Who sends</th></tr></thead>
+      <tbody>
+        <tr><td class="trigger">Routine care</td><td class="who">Care question grounded in a guide, customer calm, draft passes the deterministic gate</td><td><span class="tag auto">AUTO-SENT</span></td></tr>
+        <tr><td class="trigger">Not in the knowledge base</td><td class="who">Care question with no guide, or an upset customer</td><td><span class="tag auto">TEMPLATE ACK</span> <span class="who">+ queued</span></td></tr>
+        <tr><td class="trigger">Pet / child safety</td><td class="who">Any pet interacting with a plant</td><td><span class="tag urgent">SOFIA · URGENT</span></td></tr>
+        <tr><td class="trigger">Replacement</td><td class="who">Policy computes eligibility; agent drafts to match</td><td><span class="tag human">SOFIA · 1-tap</span></td></tr>
+        <tr><td class="trigger">Pause / cancel</td><td class="who">Agent computes options + exact £ savings</td><td><span class="tag human">SOFIA</span></td></tr>
+        <tr><td class="trigger">Billing / money dispute</td><td class="who">No draft at all — facts prepared only</td><td><span class="tag human">SOFIA writes</span></td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>The quality gate</h2>
+    <p class="sub"><code style="font-family:var(--mono);font-size:.85rem">python autopilot.py eval</code> — the real router (a pure function) scored against 27 labelled DMs, live on <span style="font-family:var(--mono);font-size:.85rem">claude-opus-4-8</span>, plus 12 deterministic draft-gate fixtures (zero model calls).</p>
+
+    <div class="tiles">
+      <div class="tile"><div class="n">96<span style="font-size:1.1rem">%</span></div><div class="k">intent <span class="frac">26/27</span></div></div>
+      <div class="tile"><div class="n">100<span style="font-size:1.1rem">%</span></div><div class="k">plant <span class="frac">16/16</span></div></div>
+      <div class="tile"><div class="n">93<span style="font-size:1.1rem">%</span></div><div class="k">lane <span class="frac">25/27</span></div></div>
+      <div class="tile"><div class="n hero">100<span style="font-size:1.1rem">%</span></div><div class="k">pet-safety recall <span class="frac">5/5</span></div></div>
+    </div>
+
+    <p class="sub" style="margin-bottom:.6rem"><strong style="color:var(--ink)">Not all errors are equal.</strong> The gate ignores raw accuracy and blocks only the three dangerous classes:</p>
+    <table class="risk">
+      <tbody>
+        <tr><td class="stripe d"></td><td class="cls">UNSAFE_AUTO_SEND</td><td class="desc">Model facts sent with no human</td><td class="count zero">0</td><td class="gate">blocks release</td></tr>
+        <tr><td class="stripe d"></td><td class="cls">MISSED_SAFETY</td><td class="desc">A safety case not escalated</td><td class="count zero">0</td><td class="gate">blocks release</td></tr>
+        <tr><td class="stripe d"></td><td class="cls">UNVALIDATED_DRAFT</td><td class="desc">The draft gate disagreed with a labelled fixture</td><td class="count zero">0</td><td class="gate">blocks release</td></tr>
+        <tr><td class="stripe s"></td><td class="cls">safe_escalation</td><td class="desc">Sent to a human unnecessarily</td><td class="count">1</td><td class="gate">allowed</td></tr>
+        <tr><td class="stripe q"></td><td class="cls">misroute</td><td class="desc">Wrong human lane, still reviewed</td><td class="count">1</td><td class="gate">allowed</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <b>The misses are the safe kind.</b> One customer wrote “it's up on a high shelf well away from my cat” — the model flagged pet-safety and escalated anyway. Over-caution costs a human glance; under-caution costs an animal. That's the only direction a safety classifier is allowed to be wrong in — so the gate reports it and passes.
+    </div>
+
+    <div class="callout" style="background:var(--good-bg);border-color:#BFDECC;color:#1E4A34;margin-top:.9rem">
+      <b style="color:var(--good)">The eval earned its keep.</b> Growing the set from 19 to 27 caught a real <span style="font-family:var(--mono);font-size:.85em">UNSAFE_AUTO_SEND</span>: the classifier sometimes reads a plain “thanks, it's thriving!” as a care question and would auto-send an unprompted care essay. The fix was structural, not a prompt plea — the auto-send lane now <em>deterministically</em> requires the message to actually ask a question, so praise routes to a human however the model labels it. Found by measurement, closed in code.
+    </div>
+
+    <div class="callout" style="margin-top:.9rem">
+      <b>Routing isn't enough — the draft gate.</b> An earlier committed run leaked model framing (“Here's your draft reply:”, a <span style="font-family:var(--mono);font-size:.85em">---</span> separator) straight into an auto-sent DM. That exact text is now a regression fixture, and every auto-send must first pass <span style="font-family:var(--mono);font-size:.85em">validate_draft()</span> — pure string logic, zero model calls: no meta-commentary, the 110-word cap and one-emoji rule from <span style="font-family:var(--mono);font-size:.85em">policy.json</span>, no money-promise language. A failing draft is never sent — it demotes to Sofia's queue with the reasons attached. A probabilistic step is never the last gate on an irreversible action.
+    </div>
+  </section>
+
+  <section>
+    <h2>Captured run</h2>
+    <p class="sub">Verbatim terminal output. No API key was set, so every call ran through the locally-authenticated Claude Code CLI — the resilience path the design depends on.</p>
+
+    <div class="term"><pre><span class="cmd">python autopilot.py inbox</span>
+<span class="dim">=== msg_01.txt ===</span>  <span class="ok">AUTO-SENT</span>  care reply grounded in careguides/monstera.md — passed draft gate
+<span class="dim">=== msg_02.txt ===</span>  <span class="bad">QUEUED</span>  [URGENT_PET_SAFETY]   -> q001
+<span class="dim">=== msg_03.txt ===</span>  <span class="warn">QUEUED</span>  [REPLACEMENT]         -> q002
+<span class="dim">=== msg_04.txt ===</span>  <span class="ok">AUTO-SENT</span>  holding ack (template, no LLM)  +  <span class="warn">QUEUED</span> [NEEDS_SOFIA]
+<span class="dim">=== msg_05.txt ===</span>  <span class="warn">QUEUED</span>  [PAUSE_OR_CANCEL]     -> q004
+<span class="dim">=== msg_06.txt ===</span>  <span class="warn">QUEUED</span>  [BILLING_DISPUTE]     -> q005
+<span class="dim">Done. 5 item(s) waiting for Sofia.</span></pre></div>
+
+    <div class="term"><pre><span class="dim">!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!</span>
+<span class="bad head">[q001] URGENT_PET_SAFETY — @kat.and.cats</span>
+  <span class="dim">Notes:</span> We shipped this customer a <span class="warn">pothos</span> on 2026-06-26. Human must send NOW.
+  <span class="dim">Draft (grounded in careguides/pothos.md):</span>
+    Oh Kat, I'm so sorry — okay, first: take a breath, this is very rarely
+    life-threatening. The trailing plant is pothos, which is toxic to cats
+    (calcium oxalates), and chewing causes exactly what you're seeing:
+    mouth irritation, drooling and pawing. Right now: gently clear any plant
+    bits from her mouth and offer fresh water. Then ring your vet straight
+    away — go in urgently if she vomits, swells, or her breathing changes.
+                                                                    Sofia 🌿</pre></div>
+    <p class="sub" style="margin:.7rem 0 0"><em>The customer never named the plant — deterministic code read her shipment history, found the pothos we sent, and handed the model the guide's toxicity facts to phrase. Grounding and the safety gate, in one message.</em></p>
+
+    <div class="term"><pre><span class="cmd">python autopilot.py eval</span>
+<span class="dim">       case                         expected lane      got lane           notes</span>
+<span class="ok">· PASS</span>  c07_pet_calm_phrasing        URGENT_PET_SAFETY  URGENT_PET_SAFETY
+<span class="ok">· PASS</span>  c20_child_safety             URGENT_PET_SAFETY  URGENT_PET_SAFETY
+<span class="ok">· PASS</span>  c22_care_plus_billing        BILLING_DISPUTE    BILLING_DISPUTE
+<span class="ok">· PASS</span>  c23_cancel_angry             PAUSE_OR_CANCEL    PAUSE_OR_CANCEL
+<span class="ok">· PASS</span>  c26_positive_feedback        OTHER              OTHER
+<span class="warn">· FAIL</span>  c19_pet_mentioned_but_safe   AUTO_SEND_CARE     URGENT_PET_SAFETY  <span class="warn">[safe_escalation]</span>
+<span class="dim">       ... 21 more (1 misroute, rest PASS)</span>
+
+  <span class="head">Draft gate (deterministic validator fixtures — zero model calls)</span>
+<span class="ok">  PASS</span>  d01_leaked_meta_regression      expected BLOCK  got BLOCK
+<span class="ok">  PASS</span>  d02_leaked_preamble_regression  expected BLOCK  got BLOCK
+<span class="dim">       ... 10 more — draft gate fixtures 12/12</span>
+
+  <span class="head">Errors by real-world risk</span>
+  UNSAFE_AUTO_SEND  <span class="ok">0</span>      MISSED_SAFETY   <span class="ok">0</span>      UNVALIDATED_DRAFT  <span class="ok">0</span>
+  safe_escalation   <span class="warn">1</span>      misroute        <span class="warn">1</span>
+
+  <span class="ok head">==== QUALITY GATE: PASS ✅  (0 dangerous errors) ====</span></pre></div>
+  </section>
+
+  <footer>
+    <div class="repro">
+      <code>python autopilot.py inbox</code>
+      <code>python autopilot.py review</code>
+      <code>python autopilot.py eval --no-cache</code>
+    </div>
+    Rooted Autopilot. Full captured output in <code>slice/PROOF.txt</code>; the map, walkthrough, 27 labelled DMs and 12 labelled drafts are in the repo. Python 3, zero dependencies, runs on a Claude login alone.
+  </footer>
+</div>

@@ -1,0 +1,39 @@
+{
+  "business": "Rooted — monthly houseplant subscription box + care advice, ~40 subscribers",
+  "today": "2026-07-01",
+  "currency": "GBP",
+  "tiers": {
+    "Sprout": 15,
+    "Grower": 29,
+    "Jungle": 49
+  },
+  "replacement_policy": {
+    "window_days": 14,
+    "max_free_per_year": 2,
+    "photo_required": true,
+    "note": "The policy is the default answer, not Sofia's mood. Deviating from the recommendation requires editing the draft and typing a reason."
+  },
+  "routing": {
+    "auto_send_allowed": [
+      "care_question grounded in a care guide (no pet-safety mention, sender not upset, message actually asks a question)",
+      "holding acknowledgement when a question needs Sofia personally"
+    ],
+    "always_human": [
+      "anything involving pet or child safety (agent drafts, human sends)",
+      "money: refunds, replacements, billing disputes, goodwill credits",
+      "pause or cancellation conversations",
+      "plants or symptoms not covered by a care guide"
+    ]
+  },
+  "voice": {
+    "max_words": 110,
+    "style": "Warm, a bit nerdy, genuinely delighted by plants. British English. One emoji max.",
+    "sign_off": "Sofia 🌿",
+    "hard_rules": [
+      "Maximum 110 words. One actionable step, then offer to go deeper if they want.",
+      "Plant facts come ONLY from the care guide provided. If the guide does not cover it, say Sofia will follow up personally — never improvise botany.",
+      "Never promise refunds, replacements or credits — that is a human decision.",
+      "End with one clear next step for the customer."
+    ]
+  }
+}

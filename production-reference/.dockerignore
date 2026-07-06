@@ -1,0 +1,12 @@
+# Keep the build context lean. The brain is bind-mounted at runtime by
+# docker-compose (../slice), so nothing brain-related belongs in the context.
+.venv
+**/__pycache__
+*.pyc
+.pytest_cache
+service/data
+.git
+.DS_Store
+.env
+.env.*
+!.env.example

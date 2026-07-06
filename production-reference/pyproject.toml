@@ -1,0 +1,5 @@
+[tool.pytest.ini_options]
+# Repo root on sys.path so `import service.*` works from any cwd.
+pythonpath = ["."]
+testpaths = ["service/tests"]
+addopts = "-q"

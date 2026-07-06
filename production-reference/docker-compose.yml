@@ -1,0 +1,54 @@
+# rooted-automation local stack: the API over the Rooted brain + n8n.
+#
+# The brain is the repo's own ../slice, bind-mounted into the container — no
+# vendoring step, nothing to run before `docker compose build`. Inside this
+# network n8n reaches the API at http://rooted-api:8000; the host reaches it at
+# http://localhost:8000 for the SIMULATE.md curls.
+
+services:
+  rooted-api:
+    build:
+      context: .
+      dockerfile: service/Dockerfile
+    image: rooted-api:local
+    container_name: rooted-api
+    env_file: .env
+    environment:
+      # sane defaults if absent from .env
+      AUTOPILOT_MODEL: "${AUTOPILOT_MODEL:-claude-opus-4-8}"
+      LIVE_CLOCK: "${LIVE_CLOCK:-0}"
+    volumes:
+      - ./service/data:/app/service/data   # runtime state persists on the host
+      # The brain, straight from the repo. Writable only because the eval cache
+      # (slice/eval/.triage_cache.json) is its one permitted write — the adapter
+      # redirects queue/outbox into service/data.
+      - ../slice:/app/slice
+    ports:
+      - "8000:8000"
+    networks: [rooted]
+    restart: unless-stopped
+
+  n8n:
+    image: n8nio/n8n
+    container_name: rooted-n8n
+    environment:
+      WEBHOOK_URL: "http://localhost:5678/"
+      GENERIC_TIMEZONE: "Europe/London"
+      N8N_SECURE_COOKIE: "false"          # allow the UI over plain http on localhost
+      N8N_RUNNERS_ENABLED: "true"
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"   # let workflow expressions read $env.SOFIA_CHAT_ID
+      # Telegram chat ids captured once via /start (see docs/n8n-setup.md).
+      SOFIA_CHAT_ID: "${SOFIA_CHAT_ID:-}"
+      OPERATOR_CHAT_ID: "${OPERATOR_CHAT_ID:-}"
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks: [rooted]
+    restart: unless-stopped
+
+networks:
+  rooted:
+
+volumes:
+  n8n_data:

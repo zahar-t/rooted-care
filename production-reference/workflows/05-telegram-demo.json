@@ -1,0 +1,390 @@
+{
+  "name": "05 Telegram Demo",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "telegram-trigger-demo",
+      "name": "Telegram Trigger (Demo)",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted Telegram Bot"
+        }
+      },
+      "webhookId": "rooted-demo"
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Shape an inbound Telegram DM into the /v1/route contract. Content is NOT\n// inspected — this only maps Telegram fields and derives a stable message_id.\n// The frozen brain makes every judgement; this workflow just relays its\n// customer-facing reply back to the same chat.\nconst u = $input.first().json;\nconst msg = u.message || {};\nconst from = msg.from || {};\nconst chat = msg.chat || {};\nconst text = typeof msg.text === 'string' ? msg.text.trim() : '';\n\n// handle: the Telegram username if it fits the API's handle rule, else tg<id>.\nlet handle = String(from.username || '').replace(/^@/, '');\nif (!/^[A-Za-z0-9._]{1,64}$/.test(handle)) handle = 'tg' + (from.id || 'anon');\n\n// message_id: unique per Telegram message, sanitised to the API's id rule.\nconst messageId = ('tg-' + (chat.id ?? 'x') + '-' + (msg.message_id ?? 'x'))\n  .replace(/[^A-Za-z0-9._-]/g, '').slice(0, 64);\n\nreturn [{ json: {\n  message_id: messageId, handle, text, channel: 'telegram',\n  chat_id: chat.id, has_text: text.length > 0,\n} }];"
+      },
+      "id": "shape-dm",
+      "name": "Shape DM",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.has_text }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "has-text",
+      "name": "Has Text?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $('Shape DM').item.json.chat_id }}",
+        "text": "👋 Send me a text message — a customer DM to Rooted — and I'll show you how the autopilot handles it.",
+        "additionalFields": {}
+      },
+      "id": "ask-for-text",
+      "name": "Ask For Text",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        660,
+        480
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://rooted-api:8000/v1/route",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 180000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"message_id\": $json.message_id, \"handle\": $json.handle, \"text\": $json.text, \"channel\": $json.channel } }}"
+      },
+      "id": "route-demo",
+      "name": "Route (Demo)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted API Key"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $('Shape DM').item.json.chat_id }}",
+        "text": "⚠️ Couldn't route that one — is ANTHROPIC_API_KEY set and the API healthy?",
+        "additionalFields": {}
+      },
+      "id": "route-failed-demo",
+      "name": "Route Failed (Demo)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        880,
+        380
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "auto_send",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "auto_send"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "ack_and_queue",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ack_and_queue"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "queue",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "queue"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "switch-demo",
+      "name": "Switch (Demo)",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        880,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $('Shape DM').item.json.chat_id }}",
+        "text": "={{ $json.reply_to_send }}",
+        "additionalFields": {}
+      },
+      "id": "reply-care",
+      "name": "Reply Care",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1120,
+        40
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $('Shape DM').item.json.chat_id }}",
+        "text": "={{ $json.reply_to_send }}",
+        "additionalFields": {}
+      },
+      "id": "reply-handoff-ack",
+      "name": "Reply Handoff Ack",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1120,
+        200
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $('Shape DM').item.json.chat_id }}",
+        "text": "=🌿 Thanks — I've passed this straight to Sofia to answer personally; she'll follow up. (Routed as {{ $json.queued.type }} · {{ $json.queued.urgency }}: {{ $json.queued.summary }})",
+        "additionalFields": {}
+      },
+      "id": "reply-queued",
+      "name": "Reply Queued",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1120,
+        360
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger (Demo)": {
+      "main": [
+        [
+          {
+            "node": "Shape DM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape DM": {
+      "main": [
+        [
+          {
+            "node": "Has Text?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Text?": {
+      "main": [
+        [
+          {
+            "node": "Route (Demo)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ask For Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route (Demo)": {
+      "main": [
+        [
+          {
+            "node": "Switch (Demo)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route Failed (Demo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch (Demo)": {
+      "main": [
+        [
+          {
+            "node": "Reply Care",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply Handoff Ack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply Queued",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

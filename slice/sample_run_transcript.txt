@@ -1,0 +1,21 @@
+
+=== msg_01.txt ==============================
+  AUTO-SENT: care reply grounded in careguides/monstera.md — passed draft gate -> reply_msg_01.txt
+
+=== msg_02.txt ==============================
+  QUEUED: [URGENT_PET_SAFETY] -> approval queue as q001
+
+=== msg_03.txt ==============================
+  QUEUED: [REPLACEMENT] -> approval queue as q002
+
+=== msg_04.txt ==============================
+  AUTO-SENT: holding ack (template, no LLM) -> reply_msg_04.txt
+  QUEUED: [NEEDS_SOFIA] -> approval queue as q003
+
+=== msg_05.txt ==============================
+  QUEUED: [PAUSE_OR_CANCEL] -> approval queue as q004
+
+=== msg_06.txt ==============================
+  QUEUED: [BILLING_DISPUTE] -> approval queue as q005
+
+Done. 5 item(s) waiting for Sofia -> python autopilot.py review

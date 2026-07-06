@@ -1,0 +1,194 @@
+Rooted Autopilot — captured proof of an end-to-end run
+Persona: Sofia (founder of Rooted). British English throughout.
+
+Blocks 1-2 (inbox + review) are a captured live run: no ANTHROPIC_API_KEY was
+set, so every model call ran through the locally authenticated Claude Code CLI
+(claude -p), model claude-opus-4-8. Block 3 (eval) is reproduced deterministically
+from the triage cache — zero model calls — so a reviewer can re-run it for free
+with `python autopilot.py eval`. Reproduce each block with the command above it.
+
+############################################################
+# 1)  python autopilot.py inbox   — triage + route all 6 DMs
+############################################################
+
+=== msg_01.txt ==============================
+  AUTO-SENT: care reply grounded in careguides/monstera.md — passed draft gate -> reply_msg_01.txt
+
+=== msg_02.txt ==============================
+  QUEUED: [URGENT_PET_SAFETY] -> approval queue as q001
+
+=== msg_03.txt ==============================
+  QUEUED: [REPLACEMENT] -> approval queue as q002
+
+=== msg_04.txt ==============================
+  AUTO-SENT: holding ack (template, no LLM) -> reply_msg_04.txt
+  QUEUED: [NEEDS_SOFIA] -> approval queue as q003
+
+=== msg_05.txt ==============================
+  QUEUED: [PAUSE_OR_CANCEL] -> approval queue as q004
+
+=== msg_06.txt ==============================
+  QUEUED: [BILLING_DISPUTE] -> approval queue as q005
+
+Done. 5 item(s) waiting for Sofia -> python autopilot.py review
+
+############################################################
+# 2)  python autopilot.py review --approve-all   — Sofia's queue
+############################################################
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+[q001] URGENT_PET_SAFETY — @kat.and.cats (msg_02.txt)
+  Summary: Customer's cat chewed the unnamed trailing plant from this month's box and is now drooling and pawing at its mouth, and they urgently want to know if it is poisonous.
+  Notes:   We shipped this customer a pothos on latest shipment (2026-06-26). Human must review and send NOW.
+  Draft:
+    Oh Kat, I'm so sorry — I know how frightening that is. Pothos is toxic to cats (it's got insoluble calcium oxalates), and chewing can cause exactly what you're seeing: mouth irritation, drooling and pawing. It's very rarely life-threatening, but please don't wait on this.
+    
+    Right now: gently clear any plant bits from her mouth and offer her some water. Then ring your vet straight away for advice — especially if she vomits, swells, or her breathing changes at all.
+    
+    Once she's settled, keep the pothos up high or hanging, well out of reach.
+    
+    Let me know how she gets on — I'm here. 🌿
+    
+    Sofia
+  -> sent (reply_msg_02.txt)
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+[q005] BILLING_DISPUTE — @marcus.w (msg_06.txt)
+  Summary: Customer reports being charged £58 (double the usual £29) this month and wants the extra amount refunded, hinting at cancellation if unresolved.
+  Notes:   Tier is Grower (£29/mo). Check the payment provider before replying.
+  Draft:   (none — this one is yours to write, Sofia)
+  -> skipped
+
+------------------------------------------------------------
+[q002] REPLACEMENT — @dan_greenthumb (msg_03.txt)
+  Summary: Customer received a calathea in June's Rooted box with about half its leaves brown and crispy at the edges, attached a photo, and is requesting a replacement.
+  Notes:   Eligibility: {"shipped_date": "2026-06-26", "days_since_shipping": 5, "in_window": true, "under_yearly_cap": true, "recommendation": "APPROVE replacement"}
+  Draft:
+    Hi Dan — oh no, I'm sorry your calathea turned up looking sorry for itself! 🌿
+    
+    They're proper drama queens at the best of times, and they do tend to sulk after shipping, so some browning in that first week is often just cosmetic. That said, half the leaves crispy is more than a bit of transit strop, so let's put it right: I'll get a replacement calathea sent out with your next box, or sooner if I can.
+    
+    In the meantime, trim the worst crispy edges and judge recovery by the fresh new growth.
+    
+    Want me to talk you through settling it in? Just say the word.
+    
+    Sofia 🌿
+  -> sent (reply_msg_03.txt)
+
+------------------------------------------------------------
+[q003] NEEDS_SOFIA — @leafy.lou (msg_04.txt)
+  Summary: Customer asks for care advice about their fiddle leaf fig, owned for years and not from Rooted, which has been dropping leaves since they moved flat.
+  Notes:   Not covered by a care guide. Flywheel: Sofia's answer becomes the next guide (other), so the agent handles it next time.
+  Draft:   (none — this one is yours to write, Sofia)
+  -> skipped
+
+------------------------------------------------------------
+[q004] PAUSE_OR_CANCEL — @priya.plants (msg_05.txt)
+  Summary: Customer wants to pause or cancel their subscription due to budget constraints and asks how cancelling works, noting it is not a complaint.
+  Notes:   Options computed: ['pause for 1–3 months (keeps their spot + streak)', 'downgrade to Sprout (£15/mo, saves £14/mo)']
+  Draft:
+    Hey Priya! Honestly, thank you for being so lovely about this — budgets come first, always, and there's zero awkwardness here. 💚
+    
+    A couple of gentle options before you decide anything:
+    - **Pause** for 1–3 months — keeps your spot and your streak, nothing charged while you're paused.
+    - **Downgrade to Sprout** at £15/mo — that saves you £14 a month but keeps a little green coming.
+    
+    And if a full cancel is genuinely the right call, that's completely fine too — just say the word and I'll sort it, no hoops.
+    
+    Which sounds best? Happy to talk it through if it helps.
+    
+    Sofia 🌿
+  -> sent (reply_msg_05.txt)
+
+############################################################
+# 3)  python autopilot.py eval   — quality gate (27 DMs + 12 draft fixtures)
+#      (reproduced from cache, zero model calls; add --no-cache for fresh calls)
+############################################################
+
+Running triage + routing against 27 labelled DMs (cache on), plus 12 draft-gate and 3 cross-lingual fixtures (both deterministic, no model)...
+
+       case                              expected lane       got lane            notes
+  ------------------------------------------------------------------------------------------------
+· PASS  c01_care_monstera                 AUTO_SEND_CARE      AUTO_SEND_CARE      
+· PASS  c02_care_snake                    AUTO_SEND_CARE      AUTO_SEND_CARE      
+· PASS  c03_care_calathea                 AUTO_SEND_CARE      AUTO_SEND_CARE      
+· PASS  c04_care_pothos                   AUTO_SEND_CARE      AUTO_SEND_CARE      
+· PASS  c05_pet_unnamed_from_box          URGENT_PET_SAFETY   URGENT_PET_SAFETY   
+· PASS  c06_pet_named_dog                 URGENT_PET_SAFETY   URGENT_PET_SAFETY   
+· PASS  c07_pet_calm_phrasing             URGENT_PET_SAFETY   URGENT_PET_SAFETY   
+· PASS  c08_replace_photo_inwindow        REPLACEMENT         REPLACEMENT         
+· PASS  c09_replace_no_photo              REPLACEMENT         REPLACEMENT         
+· PASS  c10_replace_plus_care_tiebreak    REPLACEMENT         REPLACEMENT         
+· PASS  c11_cancel_budget                 PAUSE_OR_CANCEL     PAUSE_OR_CANCEL     
+· PASS  c12_pause_travel                  PAUSE_OR_CANCEL     PAUSE_OR_CANCEL     
+· PASS  c13_billing_double_charge         BILLING_DISPUTE     BILLING_DISPUTE     
+· PASS  c14_billing_no_symbol             BILLING_DISPUTE     BILLING_DISPUTE     
+· PASS  c15_care_not_in_kb                NEEDS_SOFIA         NEEDS_SOFIA         
+· PASS  c16_care_named_but_upset          NEEDS_SOFIA         NEEDS_SOFIA         
+· PASS  c17_shipping_late                 OTHER               OTHER               
+· PASS  c18_general_unknown_sender        OTHER               OTHER               
+· FAIL  c19_pet_mentioned_but_safe        AUTO_SEND_CARE      URGENT_PET_SAFETY   [safe_escalation]  pet_safety:True!=False
+· PASS  c20_child_safety                  URGENT_PET_SAFETY   URGENT_PET_SAFETY   
+· FAIL  c21_wrong_item                    OTHER               REPLACEMENT         [misroute]  intent:replacement_request!=shipping_issue
+· PASS  c22_care_plus_billing             BILLING_DISPUTE     BILLING_DISPUTE     
+· PASS  c23_cancel_angry                  PAUSE_OR_CANCEL     PAUSE_OR_CANCEL     
+· PASS  c24_replacement_second            REPLACEMENT         REPLACEMENT         
+· PASS  c25_pet_unknown_sender            URGENT_PET_SAFETY   URGENT_PET_SAFETY   
+· PASS  c26_positive_feedback             OTHER               OTHER               
+· PASS  c27_urgent_shipping               OTHER               OTHER               
+
+  Draft gate (deterministic validator fixtures — zero model calls)
+  ----------------------------------------------------------------
+  PASS  d01_leaked_meta_regression      expected BLOCK got BLOCK  [meta-text marker: 'clean reply'; meta-text marker: 'let me give you'; meta-text marker: 'wait —'; meta-text marker: 'one emoji max'; meta-text marker: 'emoji max'; meta-text marker: 'the sign-off'; meta-text marker: "i'll drop this"; separator line ('---') — model framing, not a DM; word cap: 141 > 110; emoji count: 2 > 1 (voice rule: one emoji max)]
+  PASS  d02_leaked_preamble_regression  expected BLOCK got BLOCK  [meta-text marker: "here's your draft"; meta-text marker: 'draft reply'; separator line ('---') — model framing, not a DM; word cap: 117 > 110; emoji count: 2 > 1 (voice rule: one emoji max)]
+  PASS  d03_good_monstera               expected SEND  got SEND 
+  PASS  d04_good_no_emoji               expected SEND  got SEND 
+  PASS  d05_wordcap_breach              expected BLOCK got BLOCK  [word cap: 156 > 110]
+  PASS  d06_two_emoji                   expected BLOCK got BLOCK  [emoji count: 2 > 1 (voice rule: one emoji max)]
+  PASS  d07_money_refund                expected BLOCK got BLOCK  [money-promise language: 'refund' — money is a human decision]
+  PASS  d08_money_free_replacement      expected BLOCK got BLOCK  [money-promise language: 'free' — money is a human decision; money-promise language: 'replacement' — money is a human decision]
+  PASS  d09_money_pound_amount          expected BLOCK got BLOCK  [money-promise language: '£ amount' — money is a human decision]
+  PASS  d10_feel_free_ok                expected SEND  got SEND 
+  PASS  d11_separator_only              expected BLOCK got BLOCK  [separator line ('---') — model framing, not a DM]
+  PASS  d12_colored_shape_emoji         expected BLOCK got BLOCK  [emoji count: 2 > 1 (voice rule: one emoji max)]
+
+  draft gate fixtures  12/12
+
+  Cross-lingual gate (deterministic — zero model calls)
+  ------------------------------------------------------------------------
+  PASS  xl01_pt_pet_safety      [pt] exp URGENT_PET_SAFETY got URGENT_PET_SAFETY PT pet-toxicity; triage MISSED pet_safety, n
+  PASS  xl02_pt_care_demote     [pt] exp NEEDS_SOFIA       got NEEDS_SOFIA       PT routine care; English twin auto-sends, PT
+  PASS  xl03_en_care_control    [en] exp AUTO_SEND_CARE    got AUTO_SEND_CARE    EN control: identical triage, only language 
+
+  cross-lingual fixtures  3/3
+
+  Scores
+  ----------------------------------------
+  intent accuracy      26/27  (96%)
+  plant accuracy       16/16  (100%)   (scored where a plant is expected)
+  lane accuracy        25/27  (93%)
+  pet-safety recall    5/5  (100%)   <- must be 100%: never miss a safety case
+  pet-safety precision 5/6  (83%)   (over-flagging is the safe direction)
+
+  Errors by real-world risk
+  ----------------------------------------
+  UNSAFE_AUTO_SEND   0   (dangerous — model facts sent with no human)
+  MISSED_SAFETY      0   (dangerous — safety case not escalated)
+  UNVALIDATED_DRAFT  0   (dangerous — the auto-send draft gate disagreed with a labelled fixture)
+  UNSAFE_CROSSLINGUAL 0   (dangerous — a non-English DM would auto-send when it needed a human)
+  safe_escalation    1   (acceptable — sent to a human unnecessarily)
+  misroute           1   (quality — wrong human lane, still reviewed)
+
+  Lane confusion (rows = expected, cols = predicted)
+                 PET  BILL  RETN  REPL  AUTO SOFIA  OTHR
+  PET (exp)        5     0     0     0     0     0     0
+  BILL (exp)       0     3     0     0     0     0     0
+  RETN (exp)       0     0     3     0     0     0     0
+  REPL (exp)       0     0     0     4     0     0     0
+  AUTO (exp)       1     0     0     0     4     0     0
+  SOFIA (exp)      0     0     0     0     0     2     0
+  OTHR (exp)       0     0     0     1     0     0     4
+
+  ====================================================
+  QUALITY GATE: PASS ✅   (0 dangerous error(s); gate blocks only those)
+  ====================================================

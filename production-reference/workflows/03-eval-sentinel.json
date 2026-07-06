@@ -1,0 +1,289 @@
+{
+  "name": "03 Eval Sentinel",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 7,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      },
+      "id": "schedule-07:30",
+      "name": "Schedule 07:30",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Monday forces a fresh (cache-off) run — a weekly live drift check.\nreturn [{ json: { no_cache: new Date().getDay() === 1 } }];"
+      },
+      "id": "decide-cache",
+      "name": "Decide Cache",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://rooted-api:8000/v1/eval",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 1200000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"no_cache\": $json.no_cache } }}"
+      },
+      "id": "run-eval",
+      "name": "Run Eval",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted API Key"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.gate }}",
+              "rightValue": "PASS",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "gate-not-pass",
+      "name": "Gate Not PASS?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        660,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://rooted-api:8000/v1/config",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"auto_send_enabled\": false, \"reason\": \"eval gate FAIL\" } }}"
+      },
+      "id": "suspend-auto-send",
+      "name": "Suspend Auto-send",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        320
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Format the eval result for the alert. Reads only scores/dangerous counts.\nconst r = $('Run Eval').item.json;\nconst s = r.scores || {};\nconst d = r.dangerous || {};\nconst line = (k, v) => v ? `${k} ${v[0]}/${v[1]}` : `${k} n/a`;\nconst text =\n  `\\u{1F6A8} Eval gate: ${r.gate || 'ERROR'} (exit ${r.exit_code ?? '?'})\\n` +\n  [line('intent', s.intent), line('lane', s.lane), line('pet-recall', s.pet_recall),\n   line('draft', s.draft_fixtures)].join('  ') + '\\n' +\n  `dangerous: UNSAFE_AUTO_SEND ${d.UNSAFE_AUTO_SEND ?? '?'}, ` +\n  `MISSED_SAFETY ${d.MISSED_SAFETY ?? '?'}, UNVALIDATED_DRAFT ${d.UNVALIDATED_DRAFT ?? '?'}\\n` +\n  'Auto-send suspended — re-enable manually after review.';\nreturn [{ json: { text } }];"
+      },
+      "id": "format-alert",
+      "name": "Format Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $env.SOFIA_CHAT_ID }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {}
+      },
+      "id": "alert-sofia",
+      "name": "Alert Sofia",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1340,
+        240
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $env.OPERATOR_CHAT_ID }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {}
+      },
+      "id": "alert-operator",
+      "name": "Alert Operator",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1340,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Rooted Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "quiet-log",
+      "name": "Quiet Log",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        900,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule 07:30": {
+      "main": [
+        [
+          {
+            "node": "Decide Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decide Cache": {
+      "main": [
+        [
+          {
+            "node": "Run Eval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Eval": {
+      "main": [
+        [
+          {
+            "node": "Gate Not PASS?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Suspend Auto-send",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gate Not PASS?": {
+      "main": [
+        [
+          {
+            "node": "Suspend Auto-send",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Quiet Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Suspend Auto-send": {
+      "main": [
+        [
+          {
+            "node": "Format Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Alert": {
+      "main": [
+        [
+          {
+            "node": "Alert Sofia",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Alert Operator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}
